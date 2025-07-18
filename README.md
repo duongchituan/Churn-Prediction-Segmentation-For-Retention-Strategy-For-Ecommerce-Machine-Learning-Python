@@ -274,11 +274,143 @@ print("Accuracy:", accuracy_score(y_test, y_pred))
 print("Classification Report:\n", classification_report(y_test, y_pred, digits=4))
 
 ```
-🗝️ **Result**:  
+🗝️ **Result:**  
 
 The Random Forest model, tuned using GridSearchCV with **recall** as the scoring metric, achieved **92.9%** **accuracy** and **73.5%** **recall** for churned users. With a **precision** of **84.7%**, the model strikes a good balance between identifying churn and maintaining accuracy. This can be considered the final model for the churn prediction task.  
 
-<img width="972" height="235" alt="image" src="https://github.com/user-attachments/assets/f9bbcfcd-d2c6-4e77-8ce8-ae6b6dd5ab45" />
+<img width="972" height="235" alt="image" src="https://github.com/user-attachments/assets/f9bbcfcd-d2c6-4e77-8ce8-ae6b6dd5ab45" />  
+
+### 📝 Key Features Influencing User Churn  
+
+```python
+feature_importance = pd.Series(best_clf.feature_importances_, index=x.columns)
+top_features = feature_importance.sort_values(ascending=False).head(10)
+
+plt.figure(figsize=(8,5))
+top_features.plot(kind='barh')
+plt.gca().invert_yaxis()
+plt.title("Top 10 Features That Affect Churn")
+plt.xlabel("Importance")
+plt.tight_layout()
+plt.show()
+```  
+
+<img width="803" height="495" alt="image" src="https://github.com/user-attachments/assets/9d381944-a552-4119-b29b-31f3cf6b2405" />
+
+```python
+# Select columns to analyze
+features_to_check = ['Tenure', 'OrderCount', 'CashbackAmount', 'Complain', 'WarehouseToHome', 'DaySinceLastOrder']
+
+# Compare median values between Churned and Non-Churned users
+comparison = dt_encoded.groupby('Churn')[features_to_check].median().T
+comparison.columns = ['Not Churned (0)', 'Churned (1)']
+comparison['Difference'] = comparison['Churned (1)'] - comparison['Not Churned (0)']
+
+# Display the result
+print("Median comparison between Churned and Non-Churned users:")
+display(comparison.sort_values('Difference', ascending=False))
+```
+
+<img width="473" height="248" alt="image" src="https://github.com/user-attachments/assets/5a0915ce-1efb-419d-bcb5-4e4398494ef9" />  
+
+
+📌 **Observation**
+
+Based on both feature importance and behavioral median comparison, the following key differences were identified between **churned** and **non-churned** users:
+
+| **Feature**                 | **Churned Group**        | **Non-Churned Group**     | **Insight**                                                                 |
+|----------------------------|---------------------------|----------------------------|------------------------------------------------------------------------------|
+| **Tenure**                 | 1 month                   | 10 months                 | New users tend to churn early, indicating weak onboarding or first impression. |
+| **Complain**               | 1.0                       | 0.0                        | Users who submitted complaints are significantly more likely to churn.      |
+| **CashbackAmount**         | ~149K                     | ~166K                      | Churned users received lower cashback incentives.                           |
+| **DaySinceLastOrder**      | 2.5 days                  | 3 days                     | Churn tends to happen shortly after their most recent purchase.             |
+| **SatisfactionScore**      | Lower                     | Higher                     | Poor satisfaction correlates with increased churn risk.                     |
+| **OrderAmountHike (YoY)**  | Low growth                | Consistent growth          | Churned customers show weak engagement and lower spending momentum.         |  
+
+🎯 **Recommendations**  
+
+To mitigate churn and retain more users, the following actions are recommended:
+
+1. **Strengthen Onboarding Programs**  
+   - Implement a 30–90 day lifecycle campaign for new users with targeted assistance, educational content, and personalized offers.
+
+2. **Proactive Complaint Management**  
+   - Establish a dedicated complaint response system with SLAs under 24 hours. Offer loyalty points or discounts for unresolved issues.
+
+3. **Revamp Incentive Strategy**  
+   - Deliver more personalized cashback and coupon schemes, especially to low-engagement segments and first-time buyers.
+
+4. **Monitor Post-Purchase Experience**  
+   - Introduce NPS or satisfaction surveys within 1–3 days after delivery to detect and resolve dissatisfaction early.
+
+5. **Address Fulfillment Gaps**  
+   - Improve shipping transparency for users far from warehouses and offer expedited delivery options where possible.
+  
+### 📝 Customer Segmentation Using Clustering  
+
+**Step 1: Feature Selection**  
+Selected key behavioral features likely associated with churn: `Tenure`, `OrderCount`, `CashbackAmount`, `Complain`, `WarehouseToHome`, `DaySinceLastOrder`
+
+**Step 2: Feature Scaling**  
+Normalized the selected features using **StandardScaler** to ensure equal contribution across variables.
+
+**Step 3: Dimensionality Reduction**  
+Applied **Principal Component Analysis (PCA)** to reduce dimensionality and eliminate noise, enhancing clustering effectiveness.
+
+**Step 4: Determine Optimal Number of Clusters**  
+Used the **Elbow Method** on the PCA-transformed dataset to identify a suitable number of clusters for KMeans.
+
+**Step 5: Apply KMeans Clustering**  
+Performed **KMeans clustering** to segment churned users based on behavioral similarities.
+
+**Step 6: Evaluate Clustering Performance**  
+Validated the clustering result using the **Silhouette Score** to ensure that the clusters are well-defined and meaningful.  
+
+#### 📊 Cluster Summary  
+
+| Cluster | Key Behaviors |
+|--------|----------------|
+| **0** | Long-tenured users (Tenure = 10), high order count (14), high cashback (~292), no complaints, long delivery (18 days), churned 9 days after last order. |
+| **1** | Very new users (Tenure = 1), low order count (2), low cashback, has complaints, delivery ~13 days, churned the day after purchase. |
+| **2** | Similar to Cluster 1 but no complaints; also churned immediately after purchase. |
+| **3** | New users with moderate order count (6), has complaints, average delivery time, churned after 7 days. |
+| **4** | Mid-tenure users (Tenure = 9), moderate orders (5), decent cashback, no complaints, churned after 7 days. |
+| **5** | Very new users (Tenure = 1), few orders (2), has complaints, extremely slow delivery (30 days), churned after 2 days. |  
+
+#### 📌 Key Insights
+
+ **Clusters 1, 2, 5**: Immediate churners — indicate onboarding or first experience failure.
+- **Cluster 5**: Delivery delay (30 days) is a red flag — urgent logistics issue.
+- **Cluster 0**: High-value loyal customers still churned — possibly due to lack of personalization or better offers elsewhere.
+- **Cluster 4**: Quiet leavers — no complaints, good tenure, still churned → lack of re-engagement.
+- **Cluster 3**: Multiple orders but with complaints → quality/service issues.
+
+#### ✅ Recommendations  
+
+🔹 Cluster 0 – High-Value Loyal Users
+- Offer **personalized reactivation campaigns** and exclusive discounts.
+- Create **VIP/Loyalty programs**.
+- Send **exit surveys** to collect insights and feedback.
+
+🔹 Clusters 1, 2, 5 – Immediate Churners
+- Improve **first-time user onboarding** with welcome offers and guidance.
+- Address **customer complaints promptly** (especially for Cluster 5).
+- Fix **delivery delays** — especially critical for Cluster 5 (30 days is unacceptable).
+
+🔹 Cluster 3 – Engaged but Dissatisfied Users
+- Investigate **service/seller/product quality** issues.
+- Provide **“We’re sorry” discounts** or vouchers to regain trust.
+- Use feedback-based incentives.
+
+🔹 Cluster 4 – Missed Opportunities
+- Trigger **win-back campaigns** after 5–7 days of inactivity.
+- Use **personalized product recommendations**.
+- Launch **limited-time deals** to create urgency.
+
+
+
+
+
 
 
 
