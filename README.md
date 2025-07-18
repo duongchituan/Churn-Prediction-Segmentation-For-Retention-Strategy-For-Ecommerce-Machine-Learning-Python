@@ -134,196 +134,147 @@ The following steps were performed to clean the dataset and prepare it for segme
 
 **Step 2:** Replace values with similar meanings in the PreferredPaymentMode column.  
 
-## 🧮 Apply RFM Model  
+## 🧮 Train & Apply Churn Prediction Model  
 
-### 📌 What is RFM?
+### 📝 Encoding
 
-Helps identify the most valuable customers for marketers by analyzing customer behavior.
+After preprocessing the dataset, encoding was applied to the categorical features:  
 
-- **Recency:** When was the customer’s last purchase?
+**1. One-Hot Encoding**  
 
-→ Indicates the level of engagement and potential interest. Customers who purchased recently are more likely to respond positively to marketing campaigns and promotions.
+- Categorical columns with a limited number of unique values were transformed using one-hot encoding, which creates separate True/False (Boolean) columns for each category. This format allows machine learning models to interpret categorical data effectively.
 
-- **Frequency:** How often does the customer make a purchase?
+- The columns encoded are: PreferredLoginDevice, PreferredPaymentMode, PreferedOrderCat, MaritalStatus, Gender.
 
-→ Measures loyalty and long-term engagement. Frequent buyers tend to have higher retention and can be targeted with loyalty programs or exclusive offers.
+```python
+# One-hot encoding
+cat_cols = ['PreferredLoginDevice', 'PreferredPaymentMode', 'Gender', 'PreferedOrderCat', 'MaritalStatus']
+dt_encoded = pd.get_dummies(dt, columns=cat_cols, drop_first=True)
+dt_encoded.head()
+```
 
-- **Monetary:** How much does the customer spend?
+**2. Dropped Unnecessary Column**  
 
-→ Reflects the value and revenue contribution of the customer. High spenders contribute significantly to total revenue and may deserve special perks or recognition.
+- The CustomerID column was removed, as it serves only as a unique identifier and does not carry predictive value for the model.
 
-The objective is to segment customers based on their activity and value to facilitate targeted marketing and retention strategies.  
+```python
+dt = dt.drop(columns='CustomerID')
+```
 
-### 🧮 Main Process  
+### 📝 Split Data into Features (X) and Target (y)  
 
-#### Step 1: Calculating the three RFM behavioral metrics  
+After preprocessing the dataset, the next step was to separate the information into two main parts:  
 
-- **Recency:** Number of days since the customer's most recent purchase up to the analysis date.
+- **Input variables (x):** these include all customer-related information such as behaviors and preferences, which are used to help the model learn.
+- **Target variable (y):** this represents whether a customer has churned or not — the outcome we want the model to predict.
 
-- **Frequency:** Total number of orders the customer has placed up to the analysis date.
+This separation ensures that the model focuses only on learning from relevant input data, and its performance can be evaluated based on how well it predicts the defined outcome.  
 
-- **Monetary:** Total revenue the customer has spent up to the analysis date.
+```python
+# Split the data into features (x) and target (y)
+x = dt_encoded.drop('Churn', axis=1)
+y = dt_encoded['Churn']  # Target
 
-![image](https://github.com/user-attachments/assets/a2f64a44-d3ff-4df2-b79f-faf1d29da37b)  
+# Split into training and testing sets (70/30 split)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
+```  
 
-#### Step 2: Scoring customers based on RFM values  
+### 📝 Standardize the Features Using MinMaxScaler  
 
-After calculating the Recency, Frequency, and Monetary values, each customer is assigned an R, F, and M score using quintiles — dividing all customers into five equally sized groups for each metric.
+All input features were normalized to a common range between **0 and 1** to ensure that no single feature dominates the model due to differences in scale.
 
-**Why use quintiles instead of quartiles or deciles?**  
+The normalization process was applied as follows:
 
-✅ Balanced granularity: Quintiles provide enough segmentation without overcomplicating the model.
+- Scaling parameters (minimum and maximum values) were calculated based only on the **training set**.
 
-✅ Easy to interpret: A consistent score range from 1 to 5 makes the results intuitive and easy to communicate.
+- Both the training and testing sets were then transformed using these parameters.
 
-✅ Standardized scoring: All three metrics are mapped to the same scale, making them easy to combine into a unified RFM score.
+This approach prevents **data leakage**, ensuring that the model only learns from information available during training.  
 
-**How scores are assigned:**  
+```python
+scaler = MinMaxScaler()
+x_train_scaled = scaler.fit_transform(x_train)
+x_test_scaled = scaler.transform(x_test)
+```
 
-**Recency (R):** Customers who purchased more recently are considered more engaged.  
+### 📝 Apply Model - Random Forest Classifier
 
-→ Customers with the **lowest recency values** (i.e., most recent purchases) receive **R = 5**, and those with the **highest values** receive **R = 1**.
+- The Random Forest model was used to predict customer churn. This is a powerful machine learning algorithm that combines multiple decision trees to improve accuracy and stability.
 
-**Frequency (F):** Customers who purchase more often are more loyal.  
+- It delivered strong performance and helped identify key factors that influence churn, supporting more informed business decisions.
 
-→ The **most frequent buyers** receive **F = 5**, and the **least frequent** receive **F = 1**.
+```python
+# Initialize the Random Forest model with a fixed random state for reproducibility
+model = RandomForestClassifier(random_state=42)
 
-**Monetary (M):** Customers who spend more contribute more value.  
+# Train the model using the scaled training data
+model.fit(x_train_scaled, y_train)
 
-→ The **highest spenders** receive **M = 5**, and the **lowest spenders** receive **M = 1**.
+# Make predictions on the scaled test data
+y_pred = model.predict(x_test_scaled)
 
-![image](https://github.com/user-attachments/assets/258cd7ea-867b-4e9a-ae1a-6e50b99f26a9)  
+# Print the accuracy score of the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
 
-#### Step 3: Creating the combined RFM score  
+# Print a detailed classification report (precision, recall, F1-score, support)
+print("Classification Report:")
+print(classification_report(y_test, y_pred, digits=4))  
 
-After assigning individual scores for **Recency**, **Frequency**, and **Monetary**, the three scores are concatenated into a three-digit string. Each customer is assigned a unique RFM score (e.g., 543, 215, 355) that represents their purchasing behavior.  
+# Import libraries for displaying the confusion matrix
+from sklearn.metrics import ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
-![image](https://github.com/user-attachments/assets/9fdc5f59-ee58-40b5-a14a-70d323d1a6e3)  
+# Visualize the confusion matrix with custom labels and color map
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred, display_labels=["Stay", "Churn"], cmap="Blues")
+plt.title("Confusion Matrix")
+plt.show()
 
-#### Step 4: Assigning customer segments  
+```
+<img width="589" height="663" alt="image" src="https://github.com/user-attachments/assets/55538e5b-ab7b-43b0-af6b-7435d26e7318" />  
 
-After generating the RFM score (e.g., 543, 215...), each score is matched to a specific customer group based on a predefined segmentation table.
+#### 🔎 Observation 
 
-This makes it easy to identify which group each customer belongs to, allowing the business to apply appropriate strategies such as offering promotions, providing personalized care, or encouraging repeat purchases.  
+The initial Random Forest model achieved an overall accuracy of 94.3%, with a churn recall of 74.2%. While the model correctly identified most churners, it still missed about 1 in 4 of them — which could represent a significant loss for the business.  
 
-![image](https://github.com/user-attachments/assets/70911ad7-4ad0-42cb-8ad7-22856f49eb0f)
+#### 🔧 Hyperparameter Tuning to Improve Recall
+To improve the model's ability to detect churned customers, we applied GridSearchCV using recall as the scoring metric.
+This ensures that the model prioritizes correctly identifying churners, even at the cost of slightly lower precision or accuracy.  
 
----
+```python
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
 
-## 📊 Visualization & Analysis  
+# Initialize the baseline Random Forest model
+clf_rand = RandomForestClassifier(random_state=42, class_weight='balanced')
 
-### 1. Customer Segment Distribution
+# Define the hyperparameter grid for GridSearchCV to explore
+param_grid = {
+    'n_estimators': [50, 100, 200],        # Number of trees in the forest
+    'max_depth': [None, 10, 20],           # Maximum depth of each tree
+    'min_samples_split': [2, 5],           # Minimum samples required to split a node
+    'min_samples_leaf': [1, 2],            # Minimum samples required at each leaf node
+    'bootstrap': [True]                    # Whether to use bootstrap samples
+}
 
-![image](https://github.com/user-attachments/assets/fd272775-091f-4871-b153-6237e07f8ea5)  
+# Use 'recall' as the scoring metric to prioritize correctly identifying churned users
+grid_search = GridSearchCV(clf_rand, param_grid, cv=5, scoring='recall', n_jobs=-1, verbose=1)
 
-### 2. Recency by Segment  
+# Fit the grid search on the scaled training data
+grid_search.fit(x_train_scaled, y_train)
 
-![image](https://github.com/user-attachments/assets/bb5baae4-21be-4e7c-a5b8-44e5552ea045)  
+# Print out the best hyperparameter combination found
+print("Best Parameters:", grid_search.best_params_)
 
-### 3. Frequency by Segment
+# Make predictions on the test set and evaluate performance
+best_clf = grid_search.best_estimator_
+y_pred = best_clf.predict(x_test_scaled)
 
-![image](https://github.com/user-attachments/assets/d2d8ef1f-834f-4013-96b2-486e3f25a6ce)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred, digits=4))
 
-### 4. Monetary by Segment  
+```
 
-![image](https://github.com/user-attachments/assets/73d36f66-549e-417f-820f-7701f4f692aa)  
 
-This table provides a detailed overview of each customer segment based on their average **Recency**, **Frequency**, and **Monetary** values, along with behavioral interpretation and recommended actions.
-
-| Segment               | Recency (days) | Frequency (orders) | Monetary (£) | Behavior Interpretation                                                                 | Suggested Action                                                   |
-|-----------------------|----------------|---------------------|--------------|------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| **Champions**         | 32.6           | 246.4               | 2,640,167    | Recently purchased, very frequent, very high spender → **top-tier customers**           | Offer VIP perks, exclusive deals, loyalty upgrades                 |
-| **Loyal**             | 60.2           | 108.8               | 622,787      | Consistently engaged and spending → **loyal and reliable**                              | Maintain relationship, cross-sell, reward with incentives          |
-| **Potential Loyalist**| 51.9           | 45.9                | 215,402      | Recently engaged, moderate activity → **potential long-term customer**                  | Nurture with emails, offer product bundles                         |
-| **New Customers**     | 49.8           | 9.3                 | 49,708       | Recently made first purchase → **still exploring**                                      | Welcome emails, onboarding flow, personalized recommendations      |
-| **Promising**         | 29.2           | 19.0                | 32,642       | Recently returned but still low activity                                                 | Small discounts, showcase trending items                          |
-| **Need Attention**    | 52.2           | 52.3                | 215,526      | Previously active, now declining → **signs of disengagement**                           | Send reminder emails, recommend new or trending products           |
-| **At Risk**           | 175.4          | 74.6                | 413,276      | Used to buy frequently and spend a lot → **risk of churn**                              | Win-back campaigns, feedback surveys                               |
-| **Cannot Lose Them**  | 263.6          | 91.9                | 59,857       | VIP customers who haven’t purchased in a long time → **high retention priority**        | Send personal messages, exclusive win-back offers                  |
-| **About To Sleep**    | 101.7          | 20.3                | 24,333       | Low engagement, infrequent purchases → **may become inactive soon**                     | Light re-engagement campaigns, send helpful reminders              |
-| **Hibernating**       | 174.0          | 19.8                | 259,601      | Long inactive, low value → **low potential recovery**                                   | Run discount campaigns, consider excluding from future campaigns   |
-| **Lost Customers**    | 293.5          | 8.2                 | 50,352       | Almost no recent activity → **very low value**                                          | Exclude from marketing efforts, clean from list                    |                          |
-
----
-## 💡 Insight & Recommendation  
-
-To simplify customer segmentation and enhance strategic planning efficiency, the original RFM segments have been consolidated into broader groups based on behavioral characteristics. Maintaining too many detailed segments can hinder decision-making, disperse resources, and reduce implementation effectiveness. Grouping customers with similar behaviors, engagement levels, and value contributions allows for clearer prioritization and more effective allocation of budgets, personnel, and marketing efforts. This approach not only streamlines the analytical framework but also ensures better alignment between customer value and investment strategy.
-
-#### **1. Core Value Customers**  
-**Includes:** Champions, Loyal, Potential Loyalist  
-**Reason for grouping:** These customers purchase frequently, spend significantly, and are highly engaged or show strong long-term potential. They generate most of the revenue and should be prioritized for retention and value maximization.  
-
-#### **2. Nurture & Growth**  
-**Includes:** New Customers, Promising, Need Attention  
-**Reason for grouping:** These customers are either new, recently re-engaged, or starting to decline. They hold potential for growth if nurtured properly through engagement and personalized offers.  
-
-#### **3. At Risk & Retention**  
-**Includes:** At Risk, Cannot Lose Them  
-**Reason for grouping:** Previously high-value customers who haven't purchased for a while. They are at high risk of churn and require immediate win-back strategies to restore engagement.  
-
-#### **4. Churned / Low Value**  
-**Includes:** About To Sleep, Hibernating, Lost Customers  
-**Reason for grouping:** These customers have low engagement, low spending, and long inactivity. They offer limited recovery potential and should be deprioritized or removed from active campaigns.  
-
-### 🙋‍♂️ Customer Segmentation Strategy  
-
-#### 1️⃣ Core Value Customers  
-**Includes:** Champions, Loyal, Potential Loyalist  
-**Traits:** Represent ~40% of customers and contribute the largest share of revenue.  
-- Very high purchase frequency, recent transactions (within 30–60 days), and high spending.  
-- Act as the financial backbone of the business; highly responsive to upsell and cross-sell.  
-- Potential Loyalists show strong signs of future long-term value.
-
-**Recommended Actions:**  
-- Provide VIP benefits and loyalty privileges.  
-- Encourage reviews or referrals.  
-- Prioritize for customer service and new product campaigns.
-
-#### 2️⃣ Nurture & Growth Segment  
-**Includes:** New Customers, Promising, Need Attention  
-**Traits:** Around 16% of customers; in early-stage engagement or beginning to decline.  
-- Recent purchases but irregular, low-to-mid frequency, and modest spending.  
-- Can be cultivated into loyal customers with proper engagement.
-
-**Recommended Actions:**  
-- Send welcome/onboarding emails.  
-- Suggest product bundles or apply light discounts to trigger repeat purchases.  
-- Set up inactivity triggers and gentle nudges.
-
-#### 3️⃣ At Risk Segment  
-**Includes:** At Risk, Cannot Lose Them  
-**Traits:** Nearly 11% of customers; high past value but long periods of inactivity.  
-- Previously frequent buyers with high spend, but last purchase was 6+ months ago.  
-- May be considering competitors or have unmet needs.
-
-**Recommended Actions:**  
-- Launch “We miss you” campaigns with time-limited offers.  
-- Personalize messages based on purchase history.  
-- Conduct surveys to identify disengagement reasons.
-
-#### 4️⃣ Churned / Low Value Segment  
-**Includes:** About to Sleep, Hibernating, Lost Customers  
-**Traits:** Roughly 33% of customers with low activity, low spend, and long inactivity.  
-- Frequency < 20 orders, Recency 100–290+ days, low monetary value.  
-- Limited recovery potential except a few Hibernating cases.
-
-**Recommended Actions:**  
-- Try simple reactivation (e.g., free shipping or small voucher).  
-- If no response after 1–2 attempts → remove from active marketing list.  
-
-#### ✅ Strategic Summary  
-- **Prioritize investment** in **Core Value Customers** to maintain stable revenue and deepen loyalty.  
-- **Selectively nurture** the **Nurture & Growth** segment to convert them into high-value customers through personalized engagement.  
-- **Implement early warning mechanisms** and recovery plans for the **At Risk** segment to prevent silent churn.  
-- **Optimize marketing costs** by **discontinuing investment** in **Churned / Low Value** customers unless specific recovery signals appear.
-
-
-### 🏢 Business Recommendation  
-
-For a global retail company like SuperStore, which serves a large and diverse customer base, identifying the most impactful metric within the RFM model is essential for effective marketing and sales strategies. Among the three metrics (Recency, Frequency, and Monetary), Recency should be the top priority.
-
-Recency measures how recently a customer made a purchase. This is a strong indicator of engagement. Customers who bought recently are much more likely to respond to marketing campaigns, take advantage of promotions, and make repeat purchases. In contrast, even if a customer has purchased frequently or spent a lot in the past, a long period of inactivity may signal a loss of interest.
-
-By focusing on Recency first, teams can identify active or “warm” customers and allocate resources to those with a higher chance of conversion.
 
 
