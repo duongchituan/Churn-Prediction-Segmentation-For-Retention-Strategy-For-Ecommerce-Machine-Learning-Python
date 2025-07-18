@@ -15,7 +15,7 @@ Tools Used: Python
 1. [📌 Background & Overview](#-background--overview)  
 2. [📂 Dataset Description & Data Structure](#-dataset-description--data-structure)   
 3. [📊 Exploratory Data Analysis (EDA)](#-exploratory-data-analysis-eda)  
-4. [🧮 Train & Apply Churn Prediction Model](#-apply-rfm-model)  
+4. [🧮 Train & Apply Churn Prediction Model](#-train-apply-churn-prediction)  
 
 ---
 
