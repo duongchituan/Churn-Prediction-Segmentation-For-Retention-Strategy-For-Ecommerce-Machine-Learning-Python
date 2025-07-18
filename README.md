@@ -318,33 +318,34 @@ display(comparison.sort_values('Difference', ascending=False))
 
 Based on both feature importance and behavioral median comparison, the following key differences were identified between **churned** and **non-churned** users:
 
-| **Feature**                 | **Churned Group**        | **Non-Churned Group**     | **Insight**                                                                 |
-|----------------------------|---------------------------|----------------------------|------------------------------------------------------------------------------|
-| **Tenure**                 | 1 month                   | 10 months                 | New users tend to churn early, indicating weak onboarding or first impression. |
-| **Complain**               | 1.0                       | 0.0                        | Users who submitted complaints are significantly more likely to churn.      |
-| **CashbackAmount**         | ~149K                     | ~166K                      | Churned users received lower cashback incentives.                           |
-| **DaySinceLastOrder**      | 2.5 days                  | 3 days                     | Churn tends to happen shortly after their most recent purchase.             |
-| **SatisfactionScore**      | Lower                     | Higher                     | Poor satisfaction correlates with increased churn risk.                     |
-| **OrderAmountHike (YoY)**  | Low growth                | Consistent growth          | Churned customers show weak engagement and lower spending momentum.         |  
+| Feature | Churned Users | Non-Churned Users | Interpretation |
+|--------|----------------|-------------------|----------------|
+| **Tenure** | 1 month (median) | 10 months (median) | New users tend to churn quickly before building loyalty. |
+| **Complain** | 1.0 | 0.0 | Users who file complaints are significantly more likely to churn. |
+| **CashbackAmount** | ~149K | ~166K | Churned users received less cashback, indicating lower perceived value. |
+| **DaySinceLastOrder** | 2.5 days | 3 days | Churn often happens shortly after a recent order (last experience matters). |
+| **SatisfactionScore** | Lower | Higher | Dissatisfaction is a clear churn driver. |
+| **OrderAmountHikeFromLastYear** | Minimal growth | Consistent growth | Churned users show declining interest in the platform's offerings. |  
 
 🎯 **Recommendations**  
 
 To mitigate churn and retain more users, the following actions are recommended:
 
-1. **Strengthen Onboarding Programs**  
-   - Implement a 30–90 day lifecycle campaign for new users with targeted assistance, educational content, and personalized offers.
+**🎁 Strengthen Retention of New Users (Low Tenure)**:
+  - Offer **welcome bundles**, **discounts on 2nd order**, and **free shipping in the first month**.
+  - Send **early feedback surveys** after 1–2 initial orders to identify pain points.
 
-2. **Proactive Complaint Management**  
-   - Establish a dedicated complaint response system with SLAs under 24 hours. Offer loyalty points or discounts for unresolved issues.
+**📣 Proactively Handle Complaints**:
+  - Prioritize customer service for users with `Complain = 1`.
+  - Auto-flag users with ≥ 2 complaints for direct support follow-up.
 
-3. **Revamp Incentive Strategy**  
-   - Deliver more personalized cashback and coupon schemes, especially to low-engagement segments and first-time buyers.
+**💰 Boost Incentives for At-Risk Users**:
+  - Offer **extra cashback**, **reward points**, or **exclusive limited-time vouchers**.
+  - Identify risk based on **low tenure**, **low satisfaction**, or **declining engagement**.
 
-4. **Monitor Post-Purchase Experience**  
-   - Introduce NPS or satisfaction surveys within 1–3 days after delivery to detect and resolve dissatisfaction early.
-
-5. **Address Fulfillment Gaps**  
-   - Improve shipping transparency for users far from warehouses and offer expedited delivery options where possible.
+**🔍 Investigate Final Orders Before Churn**:
+  - Analyze the **last purchase** of churned users to uncover experience failures.
+  - Improve **logistics**, **customer service**, and **delivery reliability** accordingly.
   
 ### 📝 Customer Segmentation Using Clustering  
 
@@ -379,7 +380,7 @@ Validated the clustering result using the **Silhouette Score** to ensure that th
 
 #### 📌 Key Insights
 
- **Clusters 1, 2, 5**: Immediate churners — indicate onboarding or first experience failure.
+- **Clusters 1, 2**: Immediate churners — indicate onboarding or first experience failure.
 - **Cluster 5**: Delivery delay (30 days) is a red flag — urgent logistics issue.
 - **Cluster 0**: High-value loyal customers still churned — possibly due to lack of personalization or better offers elsewhere.
 - **Cluster 4**: Quiet leavers — no complaints, good tenure, still churned → lack of re-engagement.
