@@ -1,4 +1,4 @@
-# 🖥️ Churn Prediction & Segmentation For Retention Strategy For Ecommerce | Machine Learning - Python
+# 🖥️ Churn Prediction & Segmentation For Retention Strategy For Ecommerce | Python
 
 ---
 
