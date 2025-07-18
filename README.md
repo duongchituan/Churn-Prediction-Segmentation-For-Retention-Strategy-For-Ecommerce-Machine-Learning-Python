@@ -274,6 +274,11 @@ print("Accuracy:", accuracy_score(y_test, y_pred))
 print("Classification Report:\n", classification_report(y_test, y_pred, digits=4))
 
 ```
+🗝️ **Result**:  
+
+The Random Forest model, tuned using GridSearchCV with **recall** as the scoring metric, achieved **92.9%** **accuracy** and **73.5%** **recall** for churned users. With a **precision** of **84.7%**, the model strikes a good balance between identifying churn and maintaining accuracy. This can be considered the final model for the churn prediction task.  
+
+<img width="972" height="235" alt="image" src="https://github.com/user-attachments/assets/f9bbcfcd-d2c6-4e77-8ce8-ae6b6dd5ab45" />
 
 
 
